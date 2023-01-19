@@ -2,6 +2,7 @@ import 'package:faker/faker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pharma_inc/data/models/models.dart';
+import 'package:pharma_inc/domain/errors/errors.dart';
 import 'package:pharma_inc/domain/usecases/usecases.dart';
 
 class RemoteLoadPatients {
@@ -13,7 +14,12 @@ class RemoteLoadPatients {
     required LoadPatientsParams params,
   }) async {
     final path = RemoteLoadPatientsParams.fromParams(params: params).toPath();
-    final List<Map<String, dynamic>> response = await _request.get(path: path);
+    final List<Map<String, dynamic>>? response = await _request.get(path: path);
+
+    if (response == null) {
+      throw UnexpectedError();
+    }
+
     final models = response.map((json) {
       return PatientModel.fromJson(json: json);
     }).toList();
@@ -194,5 +200,13 @@ void main() {
 
     verify(() => request.get(path: path)).called(1);
     expect(result[0].id, "405-88-3636");
+  });
+
+  test('Should throw UnexpectedError if request returns null', () {
+    mockGetAnswer(null);
+
+    final future = sut.load(params: params);
+
+    expect(future, throwsA(isA<UnexpectedError>()));
   });
 }
