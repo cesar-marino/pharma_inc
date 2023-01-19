@@ -117,7 +117,7 @@ void main() {
 
   When mockGetCall() => when(() => request.get(path: any(named: 'path')));
 
-  void mockGetAnswer(List<Map<String, dynamic>> data) {
+  void mockGetAnswer(dynamic data) {
     mockGetCall().thenAnswer((_) async => data);
   }
 
