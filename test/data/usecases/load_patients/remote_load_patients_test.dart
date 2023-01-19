@@ -1,6 +1,7 @@
 import 'package:faker/faker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pharma_inc/data/models/models.dart';
 import 'package:pharma_inc/domain/usecases/usecases.dart';
 
 class RemoteLoadPatients {
@@ -8,9 +9,20 @@ class RemoteLoadPatients {
 
   RemoteLoadPatients({required GetRequest request}) : _request = request;
 
-  Future<void> load({required LoadPatientsParams params}) async {
+  Future<List<LoadPatientsResult>> load({
+    required LoadPatientsParams params,
+  }) async {
     final path = RemoteLoadPatientsParams.fromParams(params: params).toPath();
-    await _request.get(path: path);
+    final List<Map<String, dynamic>> response = await _request.get(path: path);
+    final models = response.map((json) {
+      return PatientModel.fromJson(json: json);
+    }).toList();
+
+    final results = models.map((model) {
+      return RemoteLoadPatientsResult.fromModel(model: model);
+    }).toList();
+
+    return results.map((result) => result.toResult()).toList();
   }
 }
 
@@ -40,6 +52,54 @@ class RemoteLoadPatientsParams {
 
   String toPath() {
     return 'results=$limit&page=$page&nat=$nationality&gender=$gender';
+  }
+}
+
+class RemoteLoadPatientsResult {
+  final String id;
+  final String picture;
+  final String name;
+  final String email;
+  final DateTime birthDate;
+  final String phone;
+  final String nationality;
+  final String address;
+
+  RemoteLoadPatientsResult({
+    required this.id,
+    required this.picture,
+    required this.name,
+    required this.email,
+    required this.birthDate,
+    required this.phone,
+    required this.nationality,
+    required this.address,
+  });
+
+  factory RemoteLoadPatientsResult.fromModel({required PatientModel model}) {
+    return RemoteLoadPatientsResult(
+      id: model.identifier.value,
+      picture: model.picture.thumbnail,
+      name: model.name.toString(),
+      email: model.email,
+      birthDate: model.dateOfBirth.date,
+      phone: model.phone,
+      nationality: model.nationality,
+      address: model.location.street.toString(),
+    );
+  }
+
+  LoadPatientsResult toResult() {
+    return LoadPatientsResult(
+      id: id,
+      picture: picture,
+      name: name,
+      email: email,
+      birthDate: birthDate,
+      phone: phone,
+      nationality: nationality,
+      address: address,
+    );
   }
 }
 
@@ -127,5 +187,12 @@ void main() {
     await sut.load(params: params);
 
     verify(() => request.get(path: path)).called(1);
+  });
+
+  test('Should return result if request resturns correct data', () async {
+    final result = await sut.load(params: params);
+
+    verify(() => request.get(path: path)).called(1);
+    expect(result[0].id, "405-88-3636");
   });
 }
